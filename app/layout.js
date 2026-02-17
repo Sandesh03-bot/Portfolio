@@ -103,6 +103,7 @@ export default function RootLayout({
                     id="scrollTop"
                     className="scroll-top-btn"
                     aria-label="Scroll to top"
+                    suppressHydrationWarning
                 >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 15l-6-6-6 6" />
@@ -125,20 +126,23 @@ export default function RootLayout({
                             });
                         }, observerOptions);
 
-                        document.addEventListener('DOMContentLoaded', () => {
+                        function initializePageScripts() {
                             const revealElements = document.querySelectorAll('.reveal');
                             revealElements.forEach(el => observer.observe(el));
 
                             // Scroll Top Visibility
                             const scrollBtn = document.getElementById('scrollTop');
+                            if (!scrollBtn) return;
                             
-                            window.addEventListener('scroll', () => {
+                            const handleScroll = () => {
                                 if (window.scrollY > 500) {
                                     scrollBtn.classList.add('visible');
                                 } else {
                                     scrollBtn.classList.remove('visible');
                                 }
-                            });
+                            };
+
+                            window.addEventListener('scroll', handleScroll, { passive: true });
 
                             // Scroll Top Action
                             scrollBtn.addEventListener('click', () => {
@@ -163,13 +167,23 @@ export default function RootLayout({
                                     });
                                 });
                             }
-                        });
+                        }
 
-                        // Fallback for dynamic content/navigation
-                        setInterval(() => {
-                            const revealElements = document.querySelectorAll('.reveal:not(.active)');
-                            revealElements.forEach(el => observer.observe(el));
-                        }, 1000);
+                        // Run once DOM is ready
+                        if (document.readyState !== 'loading') {
+                            initializePageScripts();
+                        } else {
+                            document.addEventListener('DOMContentLoaded', initializePageScripts);
+                        }
+
+                        // Handle Next.js navigation
+                        if (window.__NEXT_DATA__) {
+                            const originalPush = window.history.pushState;
+                            window.history.pushState = function() {
+                                originalPush.apply(this, arguments);
+                                initializePageScripts();
+                            };
+                        }
                     `
                 }} />
             </body>
